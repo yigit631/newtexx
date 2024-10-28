@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+            background-color: #f7f7f7;
+        }
+
+        #keyboard {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 5px;
+            max-width: 400px;
+            margin: auto;
+            opacity: 1;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        .key {
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .key:hover {
+            background-color: #f0f0f0;
+        }
+
+        #textBox {
+            margin-top: 20px;
+            padding: 10px;
+            font-size: 18px;
+        }
+
+        .space {
+            grid-column: span 5;
+        }
+
+        .backspace {
+            grid-column: span 2;
+        }
+
+        #animationButtons {
+            margin-top: 20px;
+        }
+
+        .animationButton {
+            margin: 5px;
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        .animationButton.colorful {
+            background-color: #3498db;
+            color: #fff;
+        }
+
+        .animationButton.rotate {
+            background-color: #3498db;
+            color: #fff;
+        }
+
+        .animationButton.scale {
+            background-color: #3498db;
+            color: #fff;
+        }
+
+        .animationButton.fadeInOut {
+            background-color: #3498db;
+            color: #fff;
+        }
+
+        .animationButton:hover {
+            background-color: #2980b9;
+        }
+
+        #resetColorsButton,
+        #colorModeButton,
+        #closeKeyboardButton,
+        #voiceInputButton {
+            margin-top: 20px;
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        #resetColorsButton {
+            background-color: #e74c3c;
+            color: #fff;
+        }
+
+        #colorModeButton {
+            background-color: #3498db;
+            color: #fff;
+        }
+
+        #closeKeyboardButton {
+            background-color: #e74c3c;
+            color: #fff;
+        }
+
+        #voiceInputButton {
+            background-color: #2ecc71;
+            color: #fff;
+        }
+
+        #resetColorsButton:hover,
+        #colorModeButton:hover,
+        #closeKeyboardButton:hover,
+        #voiceInputButton:hover {
+            background-color: #c0392b;
+        }
+
+        .colorful {
+            animation: colorChange 3s infinite alternate;
+        }
+
+        .rotate {
+            animation: rotate 2s infinite alternate;
+        }
+
+        .scale {
+            animation: scale 2s infinite alternate;
+        }
+
+        .fadeInOut {
+            animation: fadeInOut 2s infinite alternate;
+        }
+
+        .hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        @keyframes colorChange {
+            0% {
+                background-color: #f39c12;
+                color: #fff;
+            }
+            100% {
+                background-color: rgb( Math.floor(Math.random() * 256), Math.floor(Math.random() * 256), Math.floor(Math.random() * 256) );
+                color: #fff;
+            }
+        }
+
+        @keyframes rotate {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes scale {
+            0% {
+                transform: scale(1);
+            }
+            100% {
+                transform: scale(1.2);
+            }
+        }
+
+        @keyframes fadeInOut {
+            0%, 100% {
+                opacity: 0;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+    </style>
+    <title>Colorful Keyboard Example</title>
+</head>
+<body>
+
+<div id="keyboard"></div>
+<input type="text" id="textBox" readonly>
+<div id="animationButtons">
+    <button class="animationButton colorful" onclick="changeAnimation('colorful')">Renkli</button>
+    <button class="animationButton rotate" onclick="changeAnimation('rotate')">Döndür</button>
+    <button class="animationButton scale" onclick="changeAnimation('scale')">Büyüt</button>
+    <button class="animationButton fadeInOut" onclick="changeAnimation('fadeInOut')">Görünürlük</button>
+</div>
+<label for="writingSpeed">Yazma Hızı:</label>
+<select id="writingSpeed">
+    <option value="fast">Hızlı</option>
+    <option value="medium">Orta</option>
+    <option value="slow">Yavaş</option>
+</select>
+<button id="resetColorsButton" onclick="resetColors()">Reset Renkleri</button>
+<button id="colorModeButton" onclick="toggleColorMode()">Renk Modu Değiştir</button>
+<button id="closeKeyboardButton" onclick="toggleKeyboardVisibility()">Klavyeyi Kapat</button>
+<button id="voiceInputButton" onclick="toggleVoiceInput()">Sesle Yazma</button>
+
+<script>
+    const keyboardContainer = document.getElementById("keyboard");
+    const textBox = document.getElementById("textBox");
+    let currentKey = null;
+    let delayTimer;
+    const qwertyLayout = "QWERTYUIOP ASDFGHJKL ZXCVBNM";
+    const specialKeys = [" ", "⌫"];
+    let currentAnimation = 'colorful';
+    let recognition;
+
+    if ('webkitSpeechRecognition' in window) {
+        recognition = new webkitSpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = "tr-TR";
+
+        recognition.onstart = function () {
+            console.log("Voice recognition started.");
+        };
+
+        recognition.onresult = function (event) {
+            const transcript = event.results[0][0].transcript;
+            addToTextBox(transcript);
+        };
+
+        recognition.onerror = function (event) {
+            console.error("Voice recognition error", event.error);
+        };
+
+        recognition.onend = function () {
+            console.log("Voice recognition ended.");
+        };
+    } else {
+        alert("Tarayıcınız ses tanımayı desteklemiyor.");
+    }
+
+    function getWritingSpeed() {
+        const writingSpeedSelect = document.getElementById("writingSpeed");
+        return writingSpeedSelect.value;
+    }
+
+    for (let i = 0; i < qwertyLayout.length; i++) {
+        const key = document.createElement("div");
+        key.classList.add("key");
+        key.textContent = qwertyLayout[i];
+        
+        key.addEventListener("mouseover", function () {
+            currentKey = this;
+            const speed = getWritingSpeed();
+            let delayTime = 500; // Varsayılan hız: Orta
+
+            if (speed === "fast") {
+                delayTime = 200;
+            } else if (speed === "slow") {
+                delayTime = 800;
+            }
+
+            delayTimer = setTimeout(function () {
+                addToTextBox(currentKey.textContent);
+                currentKey = null;
+            }, delayTime);
+        });
+
+        key.addEventListener("mouseleave", function () {
+            clearTimeout(delayTimer);
+            currentKey = null;
+        });
+
+        keyboardContainer.appendChild(key);
+    }
+
+    const spaceKey = document.createElement("div");
+    spaceKey.classList.add("key", "space");
+    spaceKey.textContent = specialKeys[0];
+    spaceKey.addEventListener("click", function() {
+        addToTextBox(specialKeys[0]);
+    });
+    keyboardContainer.appendChild(spaceKey);
+
+    const backspaceKey = document.createElement("div");
+    backspaceKey.classList.add("key", "backspace");
+    backspaceKey.textContent = specialKeys[1];
+    backspaceKey.addEventListener("click", function() {
+        removeFromTextBox();
+    });
+    keyboardContainer.appendChild(backspaceKey);
+
+    function addToTextBox(char) {
+        textBox.value += char;
+    }
+
+    function removeFromTextBox() {
+        textBox.value = textBox.value.slice(0, -1);
+    }
+
+    function toggleColorMode() {
+        const keys = document.querySelectorAll(".key");
+        keys.forEach((key) => {
+            key.classList.toggle("colorful");
+        });
+    }
+
+    function changeAnimation(animation) {
+        const keys = document.querySelectorAll(".key");
+        keys.forEach((key) => {
+            key.classList.remove(currentAnimation);
+            key.classList.add(animation);
+        });
+        currentAnimation = animation;
+    }
+
+    function resetColors() {
+        const keys = document.querySelectorAll(".key");
+        keys.forEach((key) => {
+            key.style.backgroundColor = "#fff";
+            key.style.color = "#000";
+        });
+    }
+
+    function toggleKeyboardVisibility() {
+        const keyboard = document.getElementById("keyboard");
+        keyboard.classList.toggle("hidden");
+    }
+
+    function toggleVoiceInput() {
+        if (recognition) {
+            recognition.start();
+        } else {
+            alert("Tarayıcınız ses tanımayı desteklemiyor.");
+        }
+    }
+</script>
+
+</body>
+</html>
